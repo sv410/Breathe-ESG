@@ -1,0 +1,14 @@
+[build]
+  command = "pnpm run build"
+  publish = "artifacts/esg-dashboard/dist/public"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://breathe-esg-api-sa26.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

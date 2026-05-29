@@ -1,0 +1,10 @@
+{
+  "name": "@workspace/api-server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 manage.py migrate --run-syncdb && python3 manage.py seed_users && python3 manage.py runserver 0.0.0.0:$PORT",
+    "build": "echo 'Django backend — nothing to build'",
+    "typecheck": "echo 'Django backend — no TypeScript typecheck'"
+  }
+}

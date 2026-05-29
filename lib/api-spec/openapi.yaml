@@ -1,0 +1,624 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Breathe ESG – data ingestion and analyst review platform
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: clients
+    description: Client (tenant) management
+  - name: ingestion
+    description: Data ingestion from source systems
+  - name: batches
+    description: Ingestion batch tracking
+  - name: records
+    description: Emissions records review
+  - name: dashboard
+    description: Dashboard analytics
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Created client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a single client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Not found
+
+  /ingest/sap:
+    post:
+      operationId: ingestSap
+      tags: [ingestion]
+      summary: Ingest SAP fuel/procurement flat file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SapIngestInput"
+      responses:
+        "201":
+          description: Batch created with parsed records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "400":
+          description: Invalid file
+
+  /ingest/utility:
+    post:
+      operationId: ingestUtility
+      tags: [ingestion]
+      summary: Ingest utility electricity CSV
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UtilityIngestInput"
+      responses:
+        "201":
+          description: Batch created with parsed records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "400":
+          description: Invalid file
+
+  /ingest/travel:
+    post:
+      operationId: ingestTravel
+      tags: [ingestion]
+      summary: Ingest corporate travel CSV
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/TravelIngestInput"
+      responses:
+        "201":
+          description: Batch created with parsed records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "400":
+          description: Invalid file
+
+  /batches:
+    get:
+      operationId: listBatches
+      tags: [batches]
+      summary: List ingestion batches
+      parameters:
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: sourceType
+          in: query
+          schema:
+            type: string
+            enum: [sap, utility, travel]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [processing, completed, failed]
+      responses:
+        "200":
+          description: List of batches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IngestionBatch"
+
+  /batches/{id}:
+    get:
+      operationId: getBatch
+      tags: [batches]
+      summary: Get a single ingestion batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Batch detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "404":
+          description: Not found
+
+  /records:
+    get:
+      operationId: listRecords
+      tags: [records]
+      summary: List emissions records
+      parameters:
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: batchId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, flagged]
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [scope1, scope2, scope3]
+        - name: sourceType
+          in: query
+          schema:
+            type: string
+            enum: [sap, utility, travel]
+        - name: isSuspicious
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Paginated list of records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordList"
+
+  /records/{id}:
+    get:
+      operationId: getRecord
+      tags: [records]
+      summary: Get a single emissions record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Emissions record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmissionsRecord"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteRecord
+      tags: [records]
+      summary: Delete an emissions record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /records/{id}/review:
+    patch:
+      operationId: reviewRecord
+      tags: [records]
+      summary: Approve, reject, or flag a record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordReviewInput"
+      responses:
+        "200":
+          description: Updated record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmissionsRecord"
+        "404":
+          description: Not found
+
+  /records/{id}/audit:
+    get:
+      operationId: getRecordAuditLog
+      tags: [records]
+      summary: Get audit trail for a record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLogEntry"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard summary statistics
+      parameters:
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Client:
+      type: object
+      required: [id, name, slug, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ClientInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+
+    IngestionBatch:
+      type: object
+      required: [id, clientId, sourceType, status, filename, rowCount, errorCount, createdAt]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+        sourceType:
+          type: string
+          enum: [sap, utility, travel]
+        status:
+          type: string
+          enum: [processing, completed, failed]
+        filename:
+          type: string
+        rowCount:
+          type: integer
+        errorCount:
+          type: integer
+        errorDetails:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+
+    EmissionsRecord:
+      type: object
+      required:
+        - id
+        - batchId
+        - clientId
+        - scope
+        - category
+        - sourceType
+        - activityAmount
+        - activityUnit
+        - normalizedCo2eKg
+        - activityDate
+        - status
+        - isSuspicious
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        batchId:
+          type: integer
+        clientId:
+          type: integer
+        scope:
+          type: string
+          enum: [scope1, scope2, scope3]
+        category:
+          type: string
+        sourceType:
+          type: string
+          enum: [sap, utility, travel]
+        rawData:
+          type: object
+          additionalProperties: true
+        activityAmount:
+          type: number
+        activityUnit:
+          type: string
+        normalizedCo2eKg:
+          type: number
+        activityDate:
+          type: string
+          format: date
+        location:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, rejected, flagged]
+        reviewNotes:
+          type: ["string", "null"]
+        reviewedBy:
+          type: ["string", "null"]
+        reviewedAt:
+          type: ["string", "null"]
+        isSuspicious:
+          type: boolean
+        suspiciousReason:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RecordList:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmissionsRecord"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    RecordReviewInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected, flagged]
+        reviewNotes:
+          type: string
+        reviewedBy:
+          type: string
+
+    AuditLogEntry:
+      type: object
+      required: [id, recordId, action, actor, createdAt]
+      properties:
+        id:
+          type: integer
+        recordId:
+          type: integer
+        action:
+          type: string
+          enum: [approved, rejected, flagged, edited, deleted]
+        actor:
+          type: string
+        beforeState:
+          type: object
+          additionalProperties: true
+        afterState:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    DashboardSummary:
+      type: object
+      required:
+        - totalRecords
+        - pendingCount
+        - approvedCount
+        - rejectedCount
+        - flaggedCount
+        - suspiciousCount
+        - totalCo2eKg
+        - byScope
+        - bySource
+        - recentBatches
+      properties:
+        totalRecords:
+          type: integer
+        pendingCount:
+          type: integer
+        approvedCount:
+          type: integer
+        rejectedCount:
+          type: integer
+        flaggedCount:
+          type: integer
+        suspiciousCount:
+          type: integer
+        totalCo2eKg:
+          type: number
+        byScope:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScopeBreakdown"
+        bySource:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceBreakdown"
+        recentBatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestionBatch"
+
+    ScopeBreakdown:
+      type: object
+      required: [scope, count, co2eKg]
+      properties:
+        scope:
+          type: string
+          enum: [scope1, scope2, scope3]
+        count:
+          type: integer
+        co2eKg:
+          type: number
+
+    SourceBreakdown:
+      type: object
+      required: [sourceType, count, co2eKg]
+      properties:
+        sourceType:
+          type: string
+          enum: [sap, utility, travel]
+        count:
+          type: integer
+        co2eKg:
+          type: number
+
+    SapIngestInput:
+      type: object
+      required: [clientId]
+      properties:
+        clientId:
+          type: integer
+
+    UtilityIngestInput:
+      type: object
+      required: [clientId]
+      properties:
+        clientId:
+          type: integer
+
+    TravelIngestInput:
+      type: object
+      required: [clientId]
+      properties:
+        clientId:
+          type: integer

@@ -1,0 +1,2 @@
+- [Date serialization](date-serialization.md) — Drizzle returns JS Date objects; always call .toISOString() before passing to Zod response schemas in every route.
+- [Django migration decisions](django-migration.md) — backend is Django 5 + DRF + simplejwt; managed=False models map to Drizzle-created tables; APPEND_SLASH=False required to match generated hook URLs.
